@@ -8,6 +8,15 @@ from user import User
 from passwordhelper import PasswordHelper
 import datetime
 from forms import LoginForm
+import os
+TEST = os.environ.get('TEST_WAITERAPP')
+
+if TEST == True:
+    from mockdbhelper import MockDBHelper as DBHelper
+else:
+    print "not mock"
+    from dbhelper import DBHelper
+
 
 app = Flask(__name__)
 app.secret_key='uGlg9sfaMMpt2WHLXnxlAWH'
@@ -97,14 +106,16 @@ def account_createtable():
     form = CreateTableForm(request.form)
     if form.validate():
         tableid = DB.add_table(form.tablenumber.data, current_user.get_id())
-        new_url = BH.shorten_url(base_url + "newrequest/" + tableid)
+        new_url = BH.shorten_url(base_url + "newrequest/" + str(tableid))
         DB.update_table(tableid, new_url)
         return redirect(url_for('account'))
     return render_template("account.html", createtableform=form, tables=DB.get_tables(current_user.get_id()))
 
 @app.route("/newrequest/<tid>")
 def new_request(tid):
-  DB.add_request(tid, datetime.datetime.now())
-  return "Your request has been logged and a waiter will be withyou shortly"
+    if DB.add_request(tid, datetime.datetime.now()):
+        return "Your request has been logged and a waiter will be with you shortly"
+    return "There is already a request pending for this table. Please be patient, a waiter will be there ASAP"
+
 if __name__ == '__main__':
     app.run(port=5000,host='0.0.0.0', debug=True)
